@@ -142,4 +142,5 @@ The agent card is served at `http://localhost:9100/.well-known/agent.json`.
 uv run pytest tests/
 ```
 
-Tests cover agent discovery, one-shot requests, and multi-turn conversations.
+- `test_problems.py` — Validates problem JSONL schema and runs gold solutions against their test cases.
+- `test_claude_code_exector.py` — Tests A2A server: agent discovery, one-shot requests, and multi-turn conversations.
