@@ -136,6 +136,19 @@ start-claude-code-server --port 9100 --workspace ./workspaces
 
 The agent card is served at `http://localhost:9100/.well-known/agent.json`.
 
+### Browsing the evaluation dataset
+
+A Streamlit app (`app.py`) lets you browse the evaluation problems interactively.
+
+```bash
+uv run streamlit run app.py
+```
+
+Features:
+- Select a main problem (Tutorial 1, 2, or 3) from the sidebar
+- Browse individual sub-steps with full descriptions, background context, function signatures, docstrings, and test cases
+- Toggle **Show gold solution** to reveal the reference implementation
+
 ### Running tests
 
 ```bash
