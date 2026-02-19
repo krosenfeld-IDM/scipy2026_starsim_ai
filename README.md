@@ -16,6 +16,66 @@ Track: **Data-Driven Discovery, Machine Learning and Artificial Intelligence**
 - Write an exam to test Starsim skills/knowledge
 - Evaluate how well the enhanced AI performs compared to out-of-the-box versions on the exam
 
+## Evaluation Dataset
+
+Our evaluation benchmark follows the structure of [SciCode](https://arxiv.org/abs/2407.13168), adapted for disease modeling with [Starsim](https://github.com/starsimhub/starsim).
+
+### Problem Structure
+
+Each problem is a multi-step disease modeling task stored as JSONL. Problems are organized hierarchically:
+
+**Main Problem** — A complete modeling task (e.g., "Build an SIR model with age-stratified mixing and calibrate to observed data").
+
+Each main problem decomposes into sequential **subproblems**, where later steps can depend on outputs from earlier ones.
+
+#### Fields per subproblem
+
+| Field | Description |
+|---|---|
+| `problem_id` | Unique identifier for the main problem (e.g., `"starsim_01"`) |
+| `sub_step_id` | Identifier for the subproblem (e.g., `"starsim_01.3"`) |
+| `description` | Natural language description of the task |
+| `function_header` | Python function signature to implement |
+| `docstring` | Input/output specification |
+| `background` | Optional domain context (epidemiology concepts, model equations, parameter definitions) |
+| `dependencies` | Allowed Python packages (e.g., `starsim`, `numpy`, `scipy`, `matplotlib`) |
+| `test_cases` | Input-output pairs and domain-specific validations |
+| `gold_solution` | Reference implementation |
+
+### Example problem outline
+
+```
+Problem: starsim_01 — "SIR model with vaccination campaign"
+  ├── Sub 1: Define disease parameters and create an SIR model
+  ├── Sub 2: Add age-stratified contact network
+  ├── Sub 3: Implement a time-varying vaccination intervention
+  ├── Sub 4: Run the simulation and extract results
+  └── Sub 5: Plot epidemic curves and compute final size
+```
+
+### Evaluation Modes
+
+Following SciCode, we support multiple evaluation configurations:
+
+| Mode | Background provided? | Prior solutions | Tests |
+|---|---|---|---|
+| **Standard** | No | Model-generated | Measures real-world capability |
+| **With background** | Yes | Model-generated | Measures instruction-following |
+| **Gold prior** | No | Gold solutions | Isolates per-step capability |
+| **With background + gold prior** | Yes | Gold solutions | Easiest setting |
+
+### Problem Domains
+
+Problems span core Starsim use cases:
+
+- **Basic modeling** — SIR/SIS/SEIR dynamics, parameter configuration
+- **Demographics** — Birth/death processes, age structure, population networks
+- **Interventions** — Vaccination campaigns, treatment protocols, behavioral changes
+- **Calibration** — Fitting models to observed data, likelihood-based calibration
+- **Analysis** — Result extraction, plotting, sensitivity analysis
+- **Multi-disease** — Co-circulating pathogens, disease interactions
+- **Advanced networks** — Household structure, spatial mixing, dynamic contact patterns
+
 ## Talk plan
 - Intro to the problem (getting up to speed on a complex library) and Starsim
 - How we developed the Starsim exam, and what worked well and didn't
