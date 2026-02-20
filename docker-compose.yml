@@ -5,8 +5,3 @@ services:
       - "9100:9100"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    volumes:
-      - workspaces:/workspaces
-
-volumes:
-  workspaces:

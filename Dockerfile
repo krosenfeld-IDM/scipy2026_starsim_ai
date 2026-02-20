@@ -31,10 +31,10 @@ RUN uv sync --frozen
 
 # Create non-root user (claude CLI refuses bypassPermissions as root)
 RUN useradd -m -s /bin/bash agent
-RUN mkdir -p /workspaces && chown agent:agent /workspaces /app -R
+RUN chown agent:agent /app -R
 
 USER agent
 
 EXPOSE 9100
 
-ENTRYPOINT ["uv", "run", "start-claude-code-server", "--host", "0.0.0.0", "--port", "9100", "--workspace", "/workspaces"]
+ENTRYPOINT ["uv", "run", "start-claude-code-server", "--host", "0.0.0.0", "--port", "9100", "--workspace", "/home/agent/workspaces"]
