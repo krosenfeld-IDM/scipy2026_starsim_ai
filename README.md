@@ -216,8 +216,8 @@ To run the A2A server in Docker for filesystem isolation:
 ```bash
 ANTHROPIC_API_KEY=sk-... docker compose up --build
 
-# Specify the Claude model (defaults to the Claude Code CLI default)
-ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY CLAUDE_MODEL=claude-sonnet-4-6 docker compose up --build
+# With verbose logging and a specific model
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY CLAUDE_MODEL=claude-sonnet-4-6 VERBOSE=true docker compose up --build
 
 # Then run the eval against it
 inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
@@ -228,7 +228,20 @@ You can also set these in a `.env` file next to `docker-compose.yml`:
 ```env
 ANTHROPIC_API_KEY=sk-...
 CLAUDE_MODEL=claude-opus-4-6
+VERBOSE=true
+MAX_TURNS=10
 ```
+
+Docker environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
+| `CLAUDE_MODEL` | — | Claude model to use |
+| `HOST` | `0.0.0.0` | Bind address |
+| `PORT` | `9100` | Listen port |
+| `MAX_TURNS` | — | Max agent loop iterations |
+| `VERBOSE` | — | Set to `true` or `1` to enable verbose logging |
 
 ### Running tests
 
