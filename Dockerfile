@@ -1,8 +1,8 @@
 FROM python:3.12-slim
 
-# Install Node.js (required for the claude CLI)
+# Install build tools and Node.js (required for C extensions and the claude CLI)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
+    apt-get install -y --no-install-recommends curl ca-certificates g++ && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -16,7 +16,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # Copy dependency files first for layer caching
-COPY pyproject.toml uv.lock .python-version ./
+COPY README.md pyproject.toml uv.lock .python-version ./
 
 # Install dependencies
 RUN uv sync --frozen --no-install-project
@@ -29,8 +29,11 @@ COPY problems/ problems/
 # Install the project itself
 RUN uv sync --frozen
 
-# Create workspace directory for agent tasks
-RUN mkdir -p /workspaces
+# Create non-root user (claude CLI refuses bypassPermissions as root)
+RUN useradd -m -s /bin/bash agent
+RUN mkdir -p /workspaces && chown agent:agent /workspaces /app -R
+
+USER agent
 
 EXPOSE 9100
 
