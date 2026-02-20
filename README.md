@@ -209,7 +209,7 @@ Agent evaluation parameters:
 | `with_background` | `True` | Include background context in prompts |
 | `timeout` | `60` | Timeout in seconds for each test case execution |
 | `request_timeout` | `600` | HTTP timeout in seconds for agent requests |
-| `max_retries` | `3` | Max retries on HTTP timeout |
+| `max_retries` | `1` | Max retries on HTTP timeout |
 
 To run the A2A server in Docker for filesystem isolation:
 
