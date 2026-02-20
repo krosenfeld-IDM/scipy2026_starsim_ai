@@ -120,10 +120,11 @@ The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) se
 |------|---------|-------------|
 | `--host` | `0.0.0.0` | Bind address |
 | `--port` | `9100` | Listen port |
-| `--workspace` | parent dir | Root directory for per-task workspaces |
-| `--model` | — | Claude model to use |
+| `--workspace` | temp dir | Root directory for per-task workspaces |
+| `--model` | — | Claude model to use (also via `CLAUDE_MODEL` env var) |
 | `--max-turns` | — | Max agent loop iterations |
 | `--mcp` | — | MCP servers to enable (repeatable) |
+| `--verbose` | off | Print detailed execution progress to stdout |
 
 **Executor** (`src/ssai/claude_code_executor.py`): Bridges the A2A protocol to Claude Code via the Claude Agent SDK. Key behaviors:
 
@@ -193,15 +194,30 @@ inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
 
 # Run a single tutorial
 inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100 -T tutorial=starsim_t1
+
+# Customize timeouts and retries
+inspect eval eval/agent/starsim.py -T request_timeout=300 -T max_retries=5
 ```
+
+Agent evaluation parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `agent_url` | `http://localhost:9100` | URL of the A2A server |
+| `problems_dir` | `./problems` | Path to problem JSONL directory |
+| `tutorial` | all | Run only a specific tutorial (e.g. `starsim_t1`) |
+| `with_background` | `True` | Include background context in prompts |
+| `timeout` | `60` | Timeout in seconds for each test case execution |
+| `request_timeout` | `600` | HTTP timeout in seconds for agent requests |
+| `max_retries` | `1` | Max retries on HTTP timeout |
 
 To run the A2A server in Docker for filesystem isolation:
 
 ```bash
 ANTHROPIC_API_KEY=sk-... docker compose up --build
 
-# Specify the Claude model (defaults to the Claude Code CLI default)
-ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY CLAUDE_MODEL=claude-sonnet-4-6 docker compose up --build
+# With verbose logging and a specific model
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY CLAUDE_MODEL=claude-sonnet-4-6 VERBOSE=true docker compose up --build
 
 # Then run the eval against it
 inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
@@ -212,7 +228,20 @@ You can also set these in a `.env` file next to `docker-compose.yml`:
 ```env
 ANTHROPIC_API_KEY=sk-...
 CLAUDE_MODEL=claude-opus-4-6
+VERBOSE=true
+MAX_TURNS=10
 ```
+
+Docker environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
+| `CLAUDE_MODEL` | — | Claude model to use |
+| `HOST` | `0.0.0.0` | Bind address |
+| `PORT` | `9100` | Listen port |
+| `MAX_TURNS` | — | Max agent loop iterations |
+| `VERBOSE` | — | Set to `true` or `1` to enable verbose logging |
 
 ### Running tests
 

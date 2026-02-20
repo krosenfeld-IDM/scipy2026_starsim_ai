@@ -2,7 +2,11 @@ services:
   agent:
     build: .
     ports:
-      - "9100:9100"
+      - "${PORT:-9100}:${PORT:-9100}"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - CLAUDE_MODEL=${CLAUDE_MODEL:-}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-9100}
+      - MAX_TURNS=${MAX_TURNS:-}
+      - VERBOSE=${VERBOSE:-}

@@ -28,6 +28,10 @@ COPY README.md pyproject.toml ./
 COPY src/ src/
 RUN uv pip install --no-deps -e . --system
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Create non-root user (claude CLI refuses bypassPermissions as root)
 RUN useradd -m -s /bin/bash agent
 RUN chown agent:agent /app -R
@@ -36,4 +40,4 @@ USER agent
 
 EXPOSE 9100
 
-ENTRYPOINT ["start-claude-code-server", "--host", "0.0.0.0", "--port", "9100", "--workspace", "/home/agent/workspaces"]
+ENTRYPOINT ["docker-entrypoint.sh"]

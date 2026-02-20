@@ -21,6 +21,7 @@ Options:
     -T with_background=True      Include background context in prompts (default: True)
     -T timeout=60                Timeout in seconds for test execution (default: 60)
     -T request_timeout=600       HTTP timeout for agent requests (default: 600)
+    -T max_retries=1             Max retries on HTTP timeout (default: 3)
 """
 
 from dotenv import load_dotenv
@@ -147,6 +148,7 @@ def a2a_agent_solver(
     agent_url: str = "http://localhost:9100",
     with_background: bool = True,
     request_timeout: int = 600,
+    max_retries: int = 3,
 ):
     """Solver that sends problems to a Claude Code A2A server."""
 
@@ -174,14 +176,16 @@ def a2a_agent_solver(
         )
 
         payload = _make_a2a_request(prompt)
+        response_text = ""
+        incomplete_reason = ""
 
-        max_retries = 3
         for attempt in range(1, max_retries + 1):
             try:
                 async with httpx.AsyncClient(timeout=request_timeout) as client:
                     resp = await client.post(agent_url, json=payload)
                     resp.raise_for_status()
                     data = resp.json()
+                response_text = _extract_a2a_response(data)
                 break
             except httpx.TimeoutException as exc:
                 if attempt < max_retries:
@@ -193,19 +197,43 @@ def a2a_agent_solver(
                         exc,
                     )
                 else:
-                    logger.error(
-                        "Timeout for %s after %d attempts — giving up",
-                        meta["sub_step_id"],
-                        max_retries,
+                    incomplete_reason = (
+                        f"INCOMPLETE: HTTP timeout after {max_retries} "
+                        f"attempt(s) ({request_timeout}s each)"
                     )
-                    raise
+                    logger.error(
+                        "%s for %s",
+                        incomplete_reason,
+                        meta["sub_step_id"],
+                    )
+            except httpx.HTTPError as exc:
+                if attempt < max_retries:
+                    logger.warning(
+                        "HTTP error for %s (attempt %d/%d): %s — retrying",
+                        meta["sub_step_id"],
+                        attempt,
+                        max_retries,
+                        exc,
+                    )
+                else:
+                    incomplete_reason = (
+                        f"INCOMPLETE: HTTP error after {max_retries} "
+                        f"attempt(s): {exc}"
+                    )
+                    logger.error(
+                        "%s for %s",
+                        incomplete_reason,
+                        meta["sub_step_id"],
+                    )
 
-        response_text = _extract_a2a_response(data)
+        if incomplete_reason:
+            response_text = incomplete_reason
 
         logger.info(
-            "Received response for %s (length=%d)",
+            "Received response for %s (length=%d%s)",
             meta["sub_step_id"],
             len(response_text),
+            ", INCOMPLETE" if incomplete_reason else "",
         )
 
         # Set the output so the scorer can evaluate it
@@ -213,6 +241,7 @@ def a2a_agent_solver(
             model="a2a-agent",
             content=response_text,
         )
+        state.metadata["incomplete"] = incomplete_reason
         state.messages.append(ChatMessageAssistant(content=response_text))
 
         return state
@@ -223,6 +252,21 @@ def a2a_agent_solver(
 @scorer(metrics=[mean(), sub_step_accuracy(), test_pass_rate()])
 def agent_scorer(timeout: int = 60):
     async def score(state: TaskState, target: Target) -> Score:
+        incomplete = state.metadata.get("incomplete", "")
+        if incomplete:
+            total = len(state.metadata["test_cases"])
+            return Score(
+                value=0.0,
+                explanation=incomplete,
+                metadata={
+                    "tests_passed": 0,
+                    "tests_total": total,
+                    "sub_step_id": state.metadata["sub_step_id"],
+                    "problem_id": state.metadata["problem_id"],
+                    "incomplete": True,
+                },
+            )
+
         response = state.output.completion
         code = extract_python_code(response)
         test_cases = state.metadata["test_cases"]
@@ -240,6 +284,7 @@ def agent_scorer(timeout: int = 60):
                 "tests_total": total,
                 "sub_step_id": state.metadata["sub_step_id"],
                 "problem_id": state.metadata["problem_id"],
+                "incomplete": False,
             },
         )
 
@@ -254,6 +299,7 @@ def starsim_agent_benchmark(
     with_background: bool = True,
     timeout: int = 60,
     request_timeout: int = 600,
+    max_retries: int = 3,
 ) -> Task:
     """Starsim agent coding evaluation benchmark.
 
@@ -267,6 +313,7 @@ def starsim_agent_benchmark(
         with_background: Whether to include background context in prompts.
         timeout: Timeout in seconds for each test case execution.
         request_timeout: HTTP timeout in seconds for agent requests.
+        max_retries: Max retries on HTTP timeout (default: 3).
     """
     samples = load_problems(problems_dir, tutorial)
     dataset = MemoryDataset(samples=samples, name="starsim_agent")
@@ -277,6 +324,7 @@ def starsim_agent_benchmark(
             agent_url=agent_url,
             with_background=with_background,
             request_timeout=request_timeout,
+            max_retries=max_retries,
         ),
         scorer=agent_scorer(timeout=timeout),
     )
