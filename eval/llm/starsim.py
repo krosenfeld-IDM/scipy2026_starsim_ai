@@ -222,7 +222,7 @@ def starsim_scorer(timeout: int = 60):
 
 
 @task
-def starsim(
+def starsim_benchmark(
     problems_dir: str = str(Path(__file__).resolve().parent.parent.parent / "problems"),
     tutorial: str | None = None,
     with_background: bool = True,
