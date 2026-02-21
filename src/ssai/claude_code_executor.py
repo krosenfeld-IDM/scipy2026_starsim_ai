@@ -18,6 +18,7 @@ import logging
 import os
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -120,21 +121,31 @@ def new_agent_text_message(text: str, final: bool = True) -> Message:
 class ExecutionLogger:
     """Writes structured JSONL logs for each task execution.
 
-    Each task gets its own file: ``<log_dir>/<task_id>.jsonl``.
+    Logs are organized by server run:
+    ``<log_dir>/<run_id>/<task_id>.jsonl``.
+
+    Each server start creates a new run directory (ISO-8601 timestamp by
+    default), so consecutive eval runs are cleanly separated.  A custom
+    *run_id* can be passed to label runs explicitly.
+
     Every line is a self-contained JSON object with at least
-    ``{"ts": ..., "event": ...}``.
+    ``{"ts": ..., "run_id": ..., "event": ...}``.
     """
 
-    def __init__(self, log_dir: Path):
-        self.log_dir = log_dir
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, log_dir: Path, run_id: str | None = None):
+        self.run_id = run_id or datetime.now(timezone.utc).strftime(
+            "%Y%m%dT%H%M%SZ"
+        )
+        self.run_dir = log_dir / self.run_id
+        self.run_dir.mkdir(parents=True, exist_ok=True)
 
     def _path_for(self, task_id: str) -> Path:
         safe_id = task_id.replace("/", "_").replace("..", "_")
-        return self.log_dir / f"{safe_id}.jsonl"
+        return self.run_dir / f"{safe_id}.jsonl"
 
     def log(self, task_id: str, event: str, **data: Any) -> None:
-        record = {"ts": time.time(), "event": event, **data}
+        record = {"ts": time.time(), "run_id": self.run_id,
+                  "event": event, **data}
         with open(self._path_for(task_id), "a") as f:
             f.write(json.dumps(record, default=str) + "\n")
 
@@ -160,6 +171,8 @@ class ClaudeCodeConfig:
         verbose:         Print detailed execution progress to stdout.
         log_dir:         Directory for structured JSONL execution logs.
                          One file per task. None = logging disabled.
+        run_id:          Label for this server run (used as subdirectory
+                         under log_dir). Defaults to an ISO-8601 timestamp.
     """
 
     def __init__(
@@ -173,6 +186,7 @@ class ClaudeCodeConfig:
         mcp_servers: list[str] | None = None,
         verbose: bool = False,
         log_dir: str | Path | None = None,
+        run_id: str | None = None,
     ):
         self.workspace_root = Path(
             workspace_root or tempfile.mkdtemp(prefix="claude_a2a_")
@@ -194,6 +208,7 @@ class ClaudeCodeConfig:
         self.mcp_servers = mcp_servers or []
         self.verbose = verbose
         self.log_dir = Path(log_dir) if log_dir else None
+        self.run_id = run_id
 
         # Set module-level flag so _log_to_console can check it
         global _verbose_enabled
@@ -244,7 +259,8 @@ class ClaudeCodeExecutor(AgentExecutor):
         self.sessions = SessionTracker()
         self._cancel_events: dict[str, asyncio.Event] = {}
         self._exec_logger: ExecutionLogger | None = (
-            ExecutionLogger(self.config.log_dir) if self.config.log_dir else None
+            ExecutionLogger(self.config.log_dir, self.config.run_id)
+            if self.config.log_dir else None
         )
 
     # ----- workspace management -----

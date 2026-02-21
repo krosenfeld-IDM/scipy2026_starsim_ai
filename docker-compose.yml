@@ -11,6 +11,7 @@ services:
       - MAX_TURNS=${MAX_TURNS:-}
       - VERBOSE=${VERBOSE:-}
       - LOG_DIR=${LOG_DIR:-/home/agent/agent_logs}
+      - RUN_ID=${RUN_ID:-}
     volumes:
       - agent-logs:/home/agent/agent_logs
 

@@ -150,6 +150,11 @@ def build_agent_card(host: str, port: int) -> AgentCard:
     default=None,
     help="Directory for structured JSONL execution logs (one file per task)",
 )
+@click.option(
+    "--run-id",
+    default=None,
+    help="Label for this server run (subdirectory under log-dir, default: ISO-8601 timestamp)",
+)
 def main(
     host: str,
     port: int,
@@ -159,6 +164,7 @@ def main(
     mcp_servers: tuple[str, ...],
     verbose: bool,
     log_dir: str | None,
+    run_id: str | None,
 ):
     """Start the Claude Code A2A server."""
 
@@ -171,6 +177,7 @@ def main(
         mcp_servers=list(mcp_servers) if mcp_servers else None,
         verbose=verbose,
         log_dir=log_dir,
+        run_id=run_id,
     )
 
     executor = ClaudeCodeExecutor(config=config)
@@ -189,8 +196,8 @@ def main(
     click.echo(f"🚀 Claude Code A2A server starting on http://{host}:{port}")
     click.echo(f"📋 Agent Card → http://{host}:{port}/.well-known/agent.json")
     click.echo(f"📁 Workspaces → {config.workspace_root}")
-    if config.log_dir:
-        click.echo(f"📝 Execution logs → {config.log_dir}")
+    if config.log_dir and executor._exec_logger:
+        click.echo(f"📝 Execution logs → {executor._exec_logger.run_dir}")
 
     uvicorn.run(app.build(), host=host, port=port)
 
