@@ -125,6 +125,8 @@ The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) se
 | `--max-turns` | — | Max agent loop iterations |
 | `--mcp` | — | MCP servers to enable (repeatable) |
 | `--verbose` | off | Print detailed execution progress to stdout |
+| `--log-dir` | — | Directory for structured JSONL execution logs (one file per task) |
+| `--run-id` | ISO-8601 timestamp | Label for this server run (subdirectory under `--log-dir`) |
 
 **Executor** (`src/ssai/claude_code_executor.py`): Bridges the A2A protocol to Claude Code via the Claude Agent SDK. Key behaviors:
 
@@ -134,6 +136,7 @@ The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) se
 - **Cancellation** — supports async cancellation via `asyncio.Event`.
 - **Configurable tools** — defaults to Read, Write, Edit, MultiEdit, Bash, Glob, Grep, and WebSearch; runs with `bypassPermissions` mode.
 - **MCP extensibility** — pluggable MCP servers for domain-specific capabilities (an example "secret" server is included in `src/ssai/mcp_secret.py`).
+- **Execution logging** — optional structured JSONL logs capturing prompts, tool usage, assistant responses, and errors for each task (see [Execution Logging](#execution-logging)).
 
 ### Running the server
 
@@ -230,6 +233,7 @@ ANTHROPIC_API_KEY=sk-...
 CLAUDE_MODEL=claude-opus-4-6
 VERBOSE=true
 MAX_TURNS=10
+LOG_DIR=/home/agent/agent_logs
 ```
 
 Docker environment variables:
@@ -242,6 +246,67 @@ Docker environment variables:
 | `PORT` | `9100` | Listen port |
 | `MAX_TURNS` | — | Max agent loop iterations |
 | `VERBOSE` | — | Set to `true` or `1` to enable verbose logging |
+| `LOG_DIR` | `/home/agent/agent_logs` | Directory for structured execution logs |
+| `RUN_ID` | ISO-8601 timestamp | Label for this server run (subdirectory under `LOG_DIR`) |
+
+### Execution Logging
+
+When `--log-dir` is set (or `LOG_DIR` in Docker), the executor writes one JSONL file per task, organized by server run:
+
+```
+agent_logs/
+├── 20260221T153000Z/      # first eval run
+│   ├── <task_id_1>.jsonl
+│   └── <task_id_2>.jsonl
+└── 20260221T170000Z/      # second eval run
+    ├── <task_id_3>.jsonl
+    └── <task_id_4>.jsonl
+```
+
+Each server start creates a new timestamped subdirectory, so consecutive eval runs are cleanly separated. You can also pass `--run-id` (or `RUN_ID` env var) to label runs explicitly (e.g. `--run-id baseline-sonnet`).
+
+Each line is a self-contained JSON object you can parse for analysis. All events include `ts` (Unix timestamp), `run_id`, and `event` fields.
+
+**Events logged:**
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `task_start` | `prompt`, `workspace`, `model` | The problem sent to Claude and execution context |
+| `assistant_text` | `text` | Each text block Claude produces |
+| `tool_use` | `tool`, `input` | Tool name and input summary |
+| `result` | `session_id` | Session ID for multi-turn tracking |
+| `error` | `error` | Exception details on failure |
+| `task_complete` | `response_len` | Final response length |
+
+**Local usage:**
+
+```bash
+start-claude-code-server --port 9100 --workspace ./workspaces --log-dir ./agent_logs
+
+# Parse logs with jq
+cat agent_logs/<task_id>.jsonl | jq 'select(.event == "tool_use")'
+```
+
+**Docker usage:**
+
+Logging is enabled by default in Docker. Logs are persisted in the `agent-logs` named volume.
+
+```bash
+# Copy all runs out of the container
+docker compose cp agent:/home/agent/agent_logs ./agent_logs
+
+# List runs
+docker compose exec agent ls /home/agent/agent_logs/
+
+# Read a specific run's logs
+docker compose exec agent cat /home/agent/agent_logs/<run_id>/<task_id>.jsonl
+
+# Label a run explicitly
+RUN_ID=baseline-sonnet docker compose up --build
+
+# Disable logging
+LOG_DIR= docker compose up --build
+```
 
 ### Running tests
 
