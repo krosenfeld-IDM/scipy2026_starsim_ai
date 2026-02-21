@@ -125,6 +125,7 @@ The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) se
 | `--max-turns` | — | Max agent loop iterations |
 | `--mcp` | — | MCP servers to enable (repeatable) |
 | `--verbose` | off | Print detailed execution progress to stdout |
+| `--log-dir` | — | Directory for structured JSONL execution logs (one file per task) |
 
 **Executor** (`src/ssai/claude_code_executor.py`): Bridges the A2A protocol to Claude Code via the Claude Agent SDK. Key behaviors:
 
@@ -134,6 +135,7 @@ The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) se
 - **Cancellation** — supports async cancellation via `asyncio.Event`.
 - **Configurable tools** — defaults to Read, Write, Edit, MultiEdit, Bash, Glob, Grep, and WebSearch; runs with `bypassPermissions` mode.
 - **MCP extensibility** — pluggable MCP servers for domain-specific capabilities (an example "secret" server is included in `src/ssai/mcp_secret.py`).
+- **Execution logging** — optional structured JSONL logs capturing prompts, tool usage, assistant responses, and errors for each task (see [Execution Logging](#execution-logging)).
 
 ### Running the server
 
@@ -230,6 +232,7 @@ ANTHROPIC_API_KEY=sk-...
 CLAUDE_MODEL=claude-opus-4-6
 VERBOSE=true
 MAX_TURNS=10
+LOG_DIR=/home/agent/agent_logs
 ```
 
 Docker environment variables:
@@ -242,6 +245,49 @@ Docker environment variables:
 | `PORT` | `9100` | Listen port |
 | `MAX_TURNS` | — | Max agent loop iterations |
 | `VERBOSE` | — | Set to `true` or `1` to enable verbose logging |
+| `LOG_DIR` | `/home/agent/agent_logs` | Directory for structured execution logs |
+
+### Execution Logging
+
+When `--log-dir` is set (or `LOG_DIR` in Docker), the executor writes one JSONL file per task to that directory. Each line is a self-contained JSON object you can parse for analysis.
+
+**Events logged:**
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `task_start` | `prompt`, `workspace`, `model` | The problem sent to Claude and execution context |
+| `assistant_text` | `text` | Each text block Claude produces |
+| `tool_use` | `tool`, `input` | Tool name and input summary |
+| `result` | `session_id` | Session ID for multi-turn tracking |
+| `error` | `error` | Exception details on failure |
+| `task_complete` | `response_len` | Final response length |
+
+All events include a `ts` (Unix timestamp) and `event` field.
+
+**Local usage:**
+
+```bash
+start-claude-code-server --port 9100 --workspace ./workspaces --log-dir ./agent_logs
+
+# Parse logs with jq
+cat agent_logs/<task_id>.jsonl | jq 'select(.event == "tool_use")'
+```
+
+**Docker usage:**
+
+Logging is enabled by default in Docker. Logs are persisted in the `agent-logs` named volume.
+
+```bash
+# Copy logs out of the container
+docker compose cp agent:/home/agent/agent_logs ./agent_logs
+
+# Or read logs directly
+docker compose exec agent ls /home/agent/agent_logs/
+docker compose exec agent cat /home/agent/agent_logs/<task_id>.jsonl
+
+# Disable logging
+LOG_DIR= docker compose up --build
+```
 
 ### Running tests
 
