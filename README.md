@@ -16,6 +16,132 @@ Track: **Data-Driven Discovery, Machine Learning and Artificial Intelligence**
 - Write an exam to test Starsim skills/knowledge
 - Evaluate how well the enhanced AI performs compared to out-of-the-box versions on the exam
 
+## Quick Start
+
+The recommended way to run the Claude Code A2A server is with Docker, which provides filesystem isolation and a reproducible environment.
+
+### 1. Start the A2A server
+
+```bash
+ANTHROPIC_API_KEY=sk-... docker compose up --build
+```
+
+The agent card is served at `http://localhost:9100/.well-known/agent.json`.
+
+You can also set configuration in a `.env` file next to `docker-compose.yml`:
+
+```env
+ANTHROPIC_API_KEY=sk-...
+CLAUDE_MODEL=claude-opus-4-6
+VERBOSE=true
+MAX_TURNS=10
+LOG_DIR=/home/agent/agent_logs
+```
+
+Docker environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
+| `CLAUDE_MODEL` | — | Claude model to use |
+| `HOST` | `0.0.0.0` | Bind address |
+| `PORT` | `9100` | Listen port |
+| `MAX_TURNS` | — | Max agent loop iterations |
+| `VERBOSE` | — | Set to `true` or `1` to enable verbose logging |
+| `LOG_DIR` | `/home/agent/agent_logs` | Directory for structured execution logs |
+| `RUN_ID` | ISO-8601 timestamp | Label for this server run (subdirectory under `LOG_DIR`) |
+
+### 2. Run the evaluation
+
+The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. Set your API key via environment variable or a `.env` file (loaded automatically via python-dotenv). See [`eval/llm/README.md`](eval/llm/README.md) for the full list of options.
+
+#### Agent evaluation (iterative)
+
+Tests an agent's ability to iteratively write, test, and debug Starsim code. Problems are sent to the Claude Code A2A server, which can execute code, observe errors, and refine its solution. The agent receives test cases in the prompt so it can self-test.
+
+```bash
+# Install dependencies (for running the eval client locally)
+uv sync
+
+# Run the agent eval
+inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
+
+# Run a single tutorial
+inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100 -T tutorial=starsim_t1
+
+# Customize timeouts and retries
+inspect eval eval/agent/starsim.py -T request_timeout=300 -T max_retries=5
+```
+
+Agent evaluation parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `agent_url` | `http://localhost:9100` | URL of the A2A server |
+| `problems_dir` | `./problems` | Path to problem JSONL directory |
+| `tutorial` | all | Run only a specific tutorial (e.g. `starsim_t1`) |
+| `with_background` | `True` | Include background context in prompts |
+| `timeout` | `60` | Timeout in seconds for each test case execution |
+| `request_timeout` | `600` | HTTP timeout in seconds for agent requests |
+| `max_retries` | `1` | Max retries on HTTP timeout |
+
+#### LLM evaluation (one-shot)
+
+Tests a model's ability to generate correct Starsim code in a single attempt (no A2A server needed):
+
+```bash
+# Run the full benchmark
+inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0
+
+# Run a single tutorial
+inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0 -T tutorial=starsim_t1
+
+# Run without background context
+inspect eval eval/llm/starsim.py --model openai/gpt-4o --temperature 0 -T with_background=False
+```
+
+### 3. Browse the evaluation dataset
+
+A Streamlit app (`app.py`) lets you browse the evaluation problems interactively.
+
+```bash
+uv run streamlit run app.py
+```
+
+Features:
+- Select a main problem (Tutorial 1, 2, or 3) from the sidebar
+- Browse individual sub-steps with full descriptions, background context, function signatures, docstrings, and test cases
+- Toggle **Show gold solution** to reveal the reference implementation
+
+### Alternative: Running the server locally
+
+**Not appropriate for evaluation**: The agent is able to access local files (including the problems and answers!). This
+option is used for development. If you want to run evaluations use the Dockerized server.
+
+If you prefer to run the A2A server without Docker:
+
+```bash
+# Install dependencies
+uv sync
+
+# Start the server
+start-claude-code-server --port 9100 --workspace ./workspaces
+```
+
+Server CLI options:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--host` | `0.0.0.0` | Bind address |
+| `--port` | `9100` | Listen port |
+| `--workspace` | temp dir | Root directory for per-task workspaces |
+| `--model` | — | Claude model to use (also via `CLAUDE_MODEL` env var) |
+| `--max-turns` | — | Max agent loop iterations |
+| `--mcp` | — | MCP servers to enable (repeatable) |
+| `--verbose` | off | Print detailed execution progress to stdout |
+| `--log-dir` | — | Directory for structured JSONL execution logs (one file per task) |
+| `--run-id` | ISO-8601 timestamp | Label for this server run (subdirectory under `--log-dir`) |
+
 ## Evaluation Dataset
 
 Our evaluation benchmark follows the structure of [SciCode](https://arxiv.org/abs/2407.13168), adapted for disease modeling with [Starsim](https://github.com/starsimhub/starsim). A central goal of this benchmark is to measure how well an agent can **leverage Starsim as a library** to solve modeling problems, rather than writing disease models from scratch. Agents that effectively use Starsim's built-in components (e.g., `ss.SIR`, `ss.Vaccine`, contact networks) demonstrate the kind of library fluency that matters in practice.
@@ -114,19 +240,7 @@ Problems span core Starsim use cases:
 
 The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) server that exposes Claude Code as a discoverable, callable coding agent over HTTP.
 
-**Server** (`src/ssai/claude_code_server.py`): Builds an Agent Card advertising four skills — code generation, code review & bug fixing, shell & DevOps, and research & exploration — and serves it via a Starlette/Uvicorn application. Configuration options:
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--host` | `0.0.0.0` | Bind address |
-| `--port` | `9100` | Listen port |
-| `--workspace` | temp dir | Root directory for per-task workspaces |
-| `--model` | — | Claude model to use (also via `CLAUDE_MODEL` env var) |
-| `--max-turns` | — | Max agent loop iterations |
-| `--mcp` | — | MCP servers to enable (repeatable) |
-| `--verbose` | off | Print detailed execution progress to stdout |
-| `--log-dir` | — | Directory for structured JSONL execution logs (one file per task) |
-| `--run-id` | ISO-8601 timestamp | Label for this server run (subdirectory under `--log-dir`) |
+**Server** (`src/ssai/claude_code_server.py`): Builds an Agent Card advertising four skills — code generation, code review & bug fixing, shell & DevOps, and research & exploration — and serves it via a Starlette/Uvicorn application.
 
 **Executor** (`src/ssai/claude_code_executor.py`): Bridges the A2A protocol to Claude Code via the Claude Agent SDK. Key behaviors:
 
@@ -137,117 +251,6 @@ The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) se
 - **Configurable tools** — defaults to Read, Write, Edit, MultiEdit, Bash, Glob, Grep, and WebSearch; runs with `bypassPermissions` mode.
 - **MCP extensibility** — pluggable MCP servers for domain-specific capabilities (an example "secret" server is included in `src/ssai/mcp_secret.py`).
 - **Execution logging** — optional structured JSONL logs capturing prompts, tool usage, assistant responses, and errors for each task (see [Execution Logging](#execution-logging)).
-
-### Running the server
-
-```bash
-# Install dependencies
-uv sync
-
-# Start the server
-start-claude-code-server --port 9100 --workspace ./workspaces
-```
-
-The agent card is served at `http://localhost:9100/.well-known/agent.json`.
-
-### Browsing the evaluation dataset
-
-A Streamlit app (`app.py`) lets you browse the evaluation problems interactively.
-
-```bash
-uv run streamlit run app.py
-```
-
-Features:
-- Select a main problem (Tutorial 1, 2, or 3) from the sidebar
-- Browse individual sub-steps with full descriptions, background context, function signatures, docstrings, and test cases
-- Toggle **Show gold solution** to reveal the reference implementation
-
-### Running the evaluation
-
-The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. There are two evaluation modes: **LLM** (one-shot generation) and **Agent** (iterative via the Claude Code A2A server).
-
-Set your API key via environment variable or a `.env` file (loaded automatically via python-dotenv). See [`eval/llm/README.md`](eval/llm/README.md) for the full list of options.
-
-#### LLM evaluation (one-shot)
-
-Tests a model's ability to generate correct Starsim code in a single attempt:
-
-```bash
-# Run the full benchmark
-inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0
-
-# Run a single tutorial
-inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0 -T tutorial=starsim_t1
-
-# Run without background context
-inspect eval eval/llm/starsim.py --model openai/gpt-4o --temperature 0 -T with_background=False
-```
-
-#### Agent evaluation (iterative)
-
-Tests an agent's ability to iteratively write, test, and debug Starsim code. Problems are sent to the Claude Code A2A server, which can execute code, observe errors, and refine its solution. The agent receives test cases in the prompt so it can self-test.
-
-```bash
-# Start the A2A server (or use Docker, see below)
-start-claude-code-server --port 9100 --workspace ./workspaces
-
-# Run the agent eval
-inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
-
-# Run a single tutorial
-inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100 -T tutorial=starsim_t1
-
-# Customize timeouts and retries
-inspect eval eval/agent/starsim.py -T request_timeout=300 -T max_retries=5
-```
-
-Agent evaluation parameters:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `agent_url` | `http://localhost:9100` | URL of the A2A server |
-| `problems_dir` | `./problems` | Path to problem JSONL directory |
-| `tutorial` | all | Run only a specific tutorial (e.g. `starsim_t1`) |
-| `with_background` | `True` | Include background context in prompts |
-| `timeout` | `60` | Timeout in seconds for each test case execution |
-| `request_timeout` | `600` | HTTP timeout in seconds for agent requests |
-| `max_retries` | `1` | Max retries on HTTP timeout |
-
-To run the A2A server in Docker for filesystem isolation:
-
-```bash
-ANTHROPIC_API_KEY=sk-... docker compose up --build
-
-# With verbose logging and a specific model
-ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY CLAUDE_MODEL=claude-sonnet-4-6 VERBOSE=true docker compose up --build
-
-# Then run the eval against it
-inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
-```
-
-You can also set these in a `.env` file next to `docker-compose.yml`:
-
-```env
-ANTHROPIC_API_KEY=sk-...
-CLAUDE_MODEL=claude-opus-4-6
-VERBOSE=true
-MAX_TURNS=10
-LOG_DIR=/home/agent/agent_logs
-```
-
-Docker environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
-| `CLAUDE_MODEL` | — | Claude model to use |
-| `HOST` | `0.0.0.0` | Bind address |
-| `PORT` | `9100` | Listen port |
-| `MAX_TURNS` | — | Max agent loop iterations |
-| `VERBOSE` | — | Set to `true` or `1` to enable verbose logging |
-| `LOG_DIR` | `/home/agent/agent_logs` | Directory for structured execution logs |
-| `RUN_ID` | ISO-8601 timestamp | Label for this server run (subdirectory under `LOG_DIR`) |
 
 ### Execution Logging
 
