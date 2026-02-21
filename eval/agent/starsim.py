@@ -21,7 +21,7 @@ Options:
     -T with_background=True      Include background context in prompts (default: True)
     -T timeout=60                Timeout in seconds for test execution (default: 60)
     -T request_timeout=600       HTTP timeout for agent requests (default: 600)
-    -T max_retries=1             Max retries on HTTP timeout (default: 3)
+    -T max_retries=1             Max retries on HTTP timeout (default: 1)
 """
 
 from dotenv import load_dotenv
@@ -148,7 +148,7 @@ def a2a_agent_solver(
     agent_url: str = "http://localhost:9100",
     with_background: bool = True,
     request_timeout: int = 600,
-    max_retries: int = 3,
+    max_retries: int = 1,
 ):
     """Solver that sends problems to a Claude Code A2A server."""
 
@@ -299,7 +299,7 @@ def starsim_agent_benchmark(
     with_background: bool = True,
     timeout: int = 60,
     request_timeout: int = 600,
-    max_retries: int = 3,
+    max_retries: int = 1,
 ) -> Task:
     """Starsim agent coding evaluation benchmark.
 
@@ -313,7 +313,7 @@ def starsim_agent_benchmark(
         with_background: Whether to include background context in prompts.
         timeout: Timeout in seconds for each test case execution.
         request_timeout: HTTP timeout in seconds for agent requests.
-        max_retries: Max retries on HTTP timeout (default: 3).
+        max_retries: Max retries on HTTP timeout (default: 1).
     """
     samples = load_problems(problems_dir, tutorial)
     dataset = MemoryDataset(samples=samples, name="starsim_agent")
