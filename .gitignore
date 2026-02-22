@@ -209,3 +209,4 @@ __marimo__/
 # logs
 logs/
 agent_logs/
+attic_logs/
