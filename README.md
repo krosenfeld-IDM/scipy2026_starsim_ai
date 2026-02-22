@@ -23,7 +23,7 @@ The recommended way to run the Claude Code A2A server is with Docker, which prov
 ### 1. Start the A2A server
 
 ```bash
-ANTHROPIC_API_KEY=sk-... docker compose up --build
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build
 ```
 
 The agent card is served at `http://localhost:9100/.well-known/agent.json`.
@@ -64,10 +64,10 @@ Tests an agent's ability to iteratively write, test, and debug Starsim code. Pro
 uv sync
 
 # Run the agent eval
-inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
+inspect eval eval/agent/starsim.py
 
 # Run a single tutorial
-inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100 -T tutorial=starsim_t1
+inspect eval eval/agent/starsim.py -T tutorial=starsim_t1
 
 # Customize timeouts and retries
 inspect eval eval/agent/starsim.py -T request_timeout=300 -T max_retries=5
@@ -113,10 +113,10 @@ Features:
 - Browse individual sub-steps with full descriptions, background context, function signatures, docstrings, and test cases
 - Toggle **Show gold solution** to reveal the reference implementation
 
-### Alternative: Running the server locally
+### Alternative: Running the A2A server locally
 
 **Not appropriate for evaluation**: The agent is able to access local files (including the problems and answers!). This
-option is used for development. If you want to run evaluations use the Dockerized server.
+option is used for development. If you want to run evaluations use the Dockerized A2A server.
 
 If you prefer to run the A2A server without Docker:
 
@@ -144,7 +144,7 @@ Server CLI options:
 
 ## Evaluation Dataset
 
-Our evaluation benchmark follows the structure of [SciCode](https://arxiv.org/abs/2407.13168), adapted for disease modeling with [Starsim](https://github.com/starsimhub/starsim). A central goal of this benchmark is to measure how well an agent can **leverage Starsim as a library** to solve modeling problems, rather than writing disease models from scratch. Agents that effectively use Starsim's built-in components (e.g., `ss.SIR`, `ss.Vaccine`, contact networks) demonstrate the kind of library fluency that matters in practice.
+Our evaluation benchmark follows the structure of [SciCode](https://arxiv.org/abs/2407.13168), adapted for disease modeling with [Starsim](https://github.com/starsimhub/starsim). A central goal of this benchmark is to measure how well an agent can **leverage Starsim as a library** to solve modeling problems, rather than writing disease models from scratch. Agents that effectively use Starsim's built-in components (e.g., `ss.SIR`, `ss.Vaccine`, contact networks) demonstrate the kind of library fluency that matters in practice. Furthermore, we add a time limit on the agent evaluation to assess the time required to find a solution (or not!).
 
 To assess this, we depart from SciCode in one key way: in addition to test-case validation, we use an **LLM-judge assessment** to evaluate whether the agent's solution actually uses Starsim APIs. This catches cases where an agent produces numerically correct output but bypasses Starsim entirely (e.g., by implementing ODE solvers from scratch). The judge reviews the generated code and scores it on Starsim API usage, idiomatic patterns, and appropriate use of library abstractions.
 
