@@ -8,9 +8,8 @@ The agent can iteratively write, test, and refine code — unlike the LLM
 eval which only gets a single generation attempt.
 
 Prerequisites:
-    Start the Claude Code A2A server before running:
-        python -m ssai.claude_code_server --port 9100
-
+    Start the Claude Code A2A server before running using the Docker Compose file:
+        ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build
 Usage:
     inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
 
