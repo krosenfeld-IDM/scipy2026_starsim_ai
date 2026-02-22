@@ -65,10 +65,13 @@ Tests an agent's ability to iteratively write, test, and debug Starsim code. Pro
 # Install dependencies (for running the eval client locally)
 uv sync
 
-# Run the agent eval
+# Activate environment; else use "uv run" before commands
+source .venv/bin/activate
+
+# Run the agent eval -- main use case, takes about 10 minutes
 inspect eval eval/agent/starsim.py
 
-# Run a single tutorial
+# Run a single tutorial -- for testing
 inspect eval eval/agent/starsim.py -T tutorial=starsim_t1
 
 # Customize timeouts and retries
