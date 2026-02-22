@@ -1,26 +1,37 @@
 # SciPy 2026: Starsim AI Evaluation
 
-## Introduction
-
-Submission for [SciPy 2026](https://pretalx.com/scipy-2026/cfp) evaluating Starsim-AI.
-
-Deadline: **February 25, 2026**
-
-Track: **Data-Driven Discovery, Machine Learning and Artificial Intelligence**
-
-> This track aims to bring together the latest advances in Artificial Intelligence and Machine Learning (AI/ML) and areas of data-driven insights that focus on advancing novel discovery across fields and applications in science and industry. This includes the development and application of new and existing open-source tools and techniques that have been influential in advancing scientific progress. **We encourage submissions that include stories of applications and improvements to simulation and simulation-based inference.**
-
-## Proposal
-
-- Build a Claude Code plugin for Starsim that combines MCP servers for Starsim + individual models and general skills (e.g., a disease modeling expert subagent, a code quality subagent)
-- Write an exam to test Starsim skills/knowledge
-- Evaluate how well the enhanced AI performs compared to out-of-the-box versions on the exam
+Evaluates the performance of LLMs for understanding and building Starsim models, with and without the Starsim-AI plugin.
 
 ## Quick Start
 
 The recommended way to run the Claude Code A2A server is with Docker, which provides filesystem isolation and a reproducible environment.
 
-### 1. Start the A2A server
+### 1. Set up the environment
+
+You will need at least an Anthropic API key, and optionally also an OpenAI one for running the comparison. Set these via environment variable or a `.env` file (loaded automatically via `python-dotenv`). 
+
+If using `dotenv` (recommended), create the following `.env` file next to `docker-compose.yml` and add your API keys:
+
+```env
+ANTHROPIC_API_KEY=sk-...
+OPENAI_API_KEY=sk-...
+CLAUDE_MODEL=claude-opus-4-6
+VERBOSE=true
+MAX_TURNS=10
+LOG_DIR=/home/agent/agent_logs
+```
+
+Only the Anthropic API key is strictly required, but the OpenAI key is also required for evaluation comparison. Other environment variables are optional.
+
+### 2. Start the A2A server
+
+Uses Docker:
+
+```bash
+docker compose up --build
+```
+
+Alternatively, if you did not create a `.env` file, you can supply the API key directly:
 
 ```bash
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build
@@ -28,21 +39,12 @@ ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build
 
 The agent card is served at `http://localhost:9100/.well-known/agent.json`.
 
-You can also set configuration in a `.env` file next to `docker-compose.yml`:
-
-```env
-ANTHROPIC_API_KEY=sk-...
-CLAUDE_MODEL=claude-opus-4-6
-VERBOSE=true
-MAX_TURNS=10
-LOG_DIR=/home/agent/agent_logs
-```
-
 Docker environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
+| `OPENAI_API_KEY` | — | OpenAI API key; required for running OpenAI evaluation |
 | `CLAUDE_MODEL` | — | Claude model to use |
 | `HOST` | `0.0.0.0` | Bind address |
 | `PORT` | `9100` | Listen port |
@@ -53,7 +55,7 @@ Docker environment variables:
 
 ### 2. Run the evaluation
 
-The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. Set your API key via environment variable or a `.env` file (loaded automatically via python-dotenv). See [`eval/llm/README.md`](eval/llm/README.md) for the full list of options.
+The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. See [`eval/llm/README.md`](eval/llm/README.md) for the full list of options.
 
 #### Agent evaluation (iterative)
 
@@ -226,13 +228,6 @@ Problems span core Starsim use cases:
 - **Multi-disease** — Co-circulating pathogens, disease interactions
 - **Advanced networks** — Household structure, spatial mixing, dynamic contact patterns
 
-## Talk plan
-- Intro to the problem (getting up to speed on a complex library) and Starsim
-- How we developed the Starsim exam, and what worked well and didn't
-- Describe which skills/subagents we developed and why
-- Models and skillsets we tested
-- Evaluation of each combination
-- Open-source "gym" for users to plug in their own library, skills, and exam
 
 ## Architecture
 
