@@ -15,5 +15,24 @@ services:
     volumes:
       - agent-logs:/home/agent/agent_logs
 
+  agent-starsim:
+    build: .
+    ports:
+      - "${STARSIM_PORT:-9101}:${STARSIM_PORT:-9101}"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${STARSIM_PORT:-9101}
+      - MAX_TURNS=${MAX_TURNS:-}
+      - VERBOSE=${VERBOSE:-}
+      - LOG_DIR=${LOG_DIR:-/home/agent/agent_logs}
+      - RUN_ID=${RUN_ID:-}
+      - PLUGIN_DIRS=/app/starsim-plugin
+    volumes:
+      - agent-starsim-logs:/home/agent/agent_logs
+      - ./starsim-plugin:/app/starsim-plugin:ro
+
 volumes:
   agent-logs:
+  agent-starsim-logs:

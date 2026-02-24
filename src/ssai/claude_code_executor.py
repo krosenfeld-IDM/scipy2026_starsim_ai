@@ -44,6 +44,7 @@ from a2a.types import (
 from claude_agent_sdk import (
     query,
     ClaudeAgentOptions,
+    SdkPluginConfig,
     AssistantMessage,
     ResultMessage,
     TextBlock,
@@ -168,6 +169,7 @@ class ClaudeCodeConfig:
                          unattended A2A operation.
         model:           Model to use (None = SDK default).
         max_turns:       Max agent loop iterations per request.
+        plugin_dirs:     Directories containing Claude Code plugins to load.
         verbose:         Print detailed execution progress to stdout.
         log_dir:         Directory for structured JSONL execution logs.
                          One file per task. None = logging disabled.
@@ -184,6 +186,7 @@ class ClaudeCodeConfig:
         model: str | None = None,
         max_turns: int | None = None,
         mcp_servers: list[str] | None = None,
+        plugin_dirs: list[str | Path] | None = None,
         verbose: bool = False,
         log_dir: str | Path | None = None,
         run_id: str | None = None,
@@ -206,6 +209,7 @@ class ClaudeCodeConfig:
         self.model = model
         self.max_turns = max_turns
         self.mcp_servers = mcp_servers or []
+        self.plugin_dirs = [Path(p) for p in (plugin_dirs or [])]
         self.verbose = verbose
         self.log_dir = Path(log_dir) if log_dir else None
         self.run_id = run_id
@@ -301,6 +305,13 @@ class ClaudeCodeExecutor(AgentExecutor):
             if mcp_configs:
                 opts.mcp_servers = mcp_configs
                 opts.allowed_tools = list(opts.allowed_tools or []) + mcp_tools
+
+        # Attach plugins
+        if self.config.plugin_dirs:
+            opts.plugins = [
+                SdkPluginConfig(type="local", path=str(p))
+                for p in self.config.plugin_dirs
+            ]
 
         # Resume an existing Claude session for multi-turn
         if task_id:
