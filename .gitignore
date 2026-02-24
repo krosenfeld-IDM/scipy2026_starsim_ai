@@ -210,3 +210,4 @@ __marimo__/
 logs/
 agent_logs/
 attic_logs/
+*.eval
