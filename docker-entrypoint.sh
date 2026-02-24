@@ -24,4 +24,11 @@ if [ -n "$RUN_ID" ]; then
     args+=("--run-id" "$RUN_ID")
 fi
 
+if [ -n "$PLUGIN_DIRS" ]; then
+    IFS=',' read -ra DIRS <<< "$PLUGIN_DIRS"
+    for dir in "${DIRS[@]}"; do
+        args+=("--plugin-dir" "$dir")
+    done
+fi
+
 exec start-claude-code-server "${args[@]}"

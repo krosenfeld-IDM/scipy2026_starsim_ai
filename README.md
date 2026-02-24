@@ -22,11 +22,27 @@ The recommended way to run the Claude Code A2A server is with Docker, which prov
 
 ### 1. Start the A2A server
 
+The Docker Compose file defines two services:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `agent` | `9100` | Base Claude Code agent (no plugins) |
+| `agent-starsim` | `9101` | Claude Code agent with the Starsim plugin enabled |
+
 ```bash
+# Start both services
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build
+
+# Start only the base agent
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build agent
+
+# Start only the Starsim-enabled agent
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build agent-starsim
 ```
 
-The agent card is served at `http://localhost:9100/.well-known/agent.json`.
+Agent cards are served at:
+- `http://localhost:9100/.well-known/agent.json` (base)
+- `http://localhost:9101/.well-known/agent.json` (starsim)
 
 You can also set configuration in a `.env` file next to `docker-compose.yml`:
 
@@ -45,11 +61,13 @@ Docker environment variables:
 | `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
 | `CLAUDE_MODEL` | — | Claude model to use |
 | `HOST` | `0.0.0.0` | Bind address |
-| `PORT` | `9100` | Listen port |
+| `PORT` | `9100` | Listen port (`agent` service) |
+| `STARSIM_PORT` | `9101` | Listen port (`agent-starsim` service) |
 | `MAX_TURNS` | — | Max agent loop iterations |
 | `VERBOSE` | — | Set to `true` or `1` to enable verbose logging |
 | `LOG_DIR` | `/home/agent/agent_logs` | Directory for structured execution logs |
 | `RUN_ID` | ISO-8601 timestamp | Label for this server run (subdirectory under `LOG_DIR`) |
+| `PLUGIN_DIRS` | — | Comma-separated plugin directory paths (set automatically for `agent-starsim`) |
 
 ### 2. Run the evaluation
 
@@ -63,14 +81,17 @@ Tests an agent's ability to iteratively write, test, and debug Starsim code. Pro
 # Install dependencies (for running the eval client locally)
 uv sync
 
-# Run the agent eval
-inspect eval eval/agent/starsim.py
+# Run the agent eval against the base agent (port 9100)
+inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
+
+# Run the agent eval against the Starsim-enabled agent (port 9101)
+inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9101
 
 # Run a single tutorial
-inspect eval eval/agent/starsim.py -T tutorial=starsim_t1
+inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100 -T tutorial=starsim_t1
 
 # Customize timeouts and retries
-inspect eval eval/agent/starsim.py -T request_timeout=300 -T max_retries=5
+inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100 -T request_timeout=300 -T max_retries=5
 ```
 
 Agent evaluation parameters:
@@ -81,6 +102,7 @@ Agent evaluation parameters:
 | `problems_dir` | `./problems` | Path to problem JSONL directory |
 | `tutorial` | all | Run only a specific tutorial (e.g. `starsim_t1`) |
 | `with_background` | `True` | Include background context in prompts |
+| `with_test_cases` | `True` | Include test cases in prompts |
 | `timeout` | `60` | Timeout in seconds for each test case execution |
 | `request_timeout` | `600` | HTTP timeout in seconds for agent requests |
 | `max_retries` | `1` | Max retries on HTTP timeout |
@@ -138,6 +160,7 @@ Server CLI options:
 | `--model` | — | Claude model to use (also via `CLAUDE_MODEL` env var) |
 | `--max-turns` | — | Max agent loop iterations |
 | `--mcp` | — | MCP servers to enable (repeatable) |
+| `--plugin-dir` | — | Directory containing a Claude Code plugin (repeatable) |
 | `--verbose` | off | Print detailed execution progress to stdout |
 | `--log-dir` | — | Directory for structured JSONL execution logs (one file per task) |
 | `--run-id` | ISO-8601 timestamp | Label for this server run (subdirectory under `--log-dir`) |
@@ -250,6 +273,7 @@ The project includes an [A2A](https://google.github.io/A2A/) (Agent-to-Agent) se
 - **Cancellation** — supports async cancellation via `asyncio.Event`.
 - **Configurable tools** — defaults to Read, Write, Edit, MultiEdit, Bash, Glob, Grep, and WebSearch; runs with `bypassPermissions` mode.
 - **MCP extensibility** — pluggable MCP servers for domain-specific capabilities (an example "secret" server is included in `src/ssai/mcp_secret.py`).
+- **Plugin support** — load Claude Code plugins via `--plugin-dir` (or `PLUGIN_DIRS` env var). The `agent-starsim` Docker service uses this to enable the Starsim plugin from `starsim-plugin/`.
 - **Execution logging** — optional structured JSONL logs capturing prompts, tool usage, assistant responses, and errors for each task (see [Execution Logging](#execution-logging)).
 
 ### Execution Logging
@@ -292,11 +316,12 @@ cat agent_logs/<task_id>.jsonl | jq 'select(.event == "tool_use")'
 
 **Docker usage:**
 
-Logging is enabled by default in Docker. Logs are persisted in the `agent-logs` named volume.
+Logging is enabled by default in Docker. Each service has its own named volume (`agent-logs` and `agent-starsim-logs`).
 
 ```bash
-# Copy all runs out of the container
+# Copy logs from each service
 docker compose cp agent:/home/agent/agent_logs ./agent_logs
+docker compose cp agent-starsim:/home/agent/agent_logs ./agent_starsim_logs
 
 # List runs
 docker compose exec agent ls /home/agent/agent_logs/

@@ -140,6 +140,12 @@ def build_agent_card(host: str, port: int) -> AgentCard:
     help="MCP server name to enable (repeatable, e.g. --mcp secret)",
 )
 @click.option(
+    "--plugin-dir",
+    "plugin_dirs",
+    multiple=True,
+    help="Directory containing a Claude Code plugin (repeatable)",
+)
+@click.option(
     "--verbose",
     is_flag=True,
     default=False,
@@ -162,6 +168,7 @@ def main(
     model: str | None,
     max_turns: int | None,
     mcp_servers: tuple[str, ...],
+    plugin_dirs: tuple[str, ...],
     verbose: bool,
     log_dir: str | None,
     run_id: str | None,
@@ -175,6 +182,7 @@ def main(
         model=model,
         max_turns=max_turns,
         mcp_servers=list(mcp_servers) if mcp_servers else None,
+        plugin_dirs=list(plugin_dirs) if plugin_dirs else None,
         verbose=verbose,
         log_dir=log_dir,
         run_id=run_id,
