@@ -3,6 +3,11 @@
     "context7": {
       "type": "http",
       "url": "https://mcp.context7.com/mcp"
+    },
+    "secret": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "ssai.mcp_secret"]
     }
   }
 }
