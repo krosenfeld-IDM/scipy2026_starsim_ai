@@ -1,26 +1,31 @@
 # SciPy 2026: Starsim AI Evaluation
 
-## Introduction
-
-Submission for [SciPy 2026](https://pretalx.com/scipy-2026/cfp) evaluating Starsim-AI.
-
-Deadline: **February 25, 2026**
-
-Track: **Data-Driven Discovery, Machine Learning and Artificial Intelligence**
-
-> This track aims to bring together the latest advances in Artificial Intelligence and Machine Learning (AI/ML) and areas of data-driven insights that focus on advancing novel discovery across fields and applications in science and industry. This includes the development and application of new and existing open-source tools and techniques that have been influential in advancing scientific progress. **We encourage submissions that include stories of applications and improvements to simulation and simulation-based inference.**
-
-## Proposal
-
-- Build a Claude Code plugin for Starsim that combines MCP servers for Starsim + individual models and general skills (e.g., a disease modeling expert subagent, a code quality subagent)
-- Write an exam to test Starsim skills/knowledge
-- Evaluate how well the enhanced AI performs compared to out-of-the-box versions on the exam
+Evaluates the performance of LLMs for understanding and building Starsim models, with and without the Starsim-AI plugin.
 
 ## Quick Start
 
 The recommended way to run the Claude Code A2A server is with Docker, which provides filesystem isolation and a reproducible environment.
 
-### 1. Start the A2A server
+### 1. Set up the environment
+
+You will need at least an Anthropic API key, and optionally also an OpenAI one for running the comparison. Set these via environment variable or a `.env` file (loaded automatically via `python-dotenv`). 
+
+If using `dotenv` (recommended), create the following `.env` file next to `docker-compose.yml` and add your API keys:
+
+```env
+ANTHROPIC_API_KEY=sk-...
+OPENAI_API_KEY=sk-...
+CLAUDE_MODEL=claude-opus-4-6
+VERBOSE=true
+MAX_TURNS=10
+LOG_DIR=/home/agent/agent_logs
+```
+
+Only the Anthropic API key is strictly required, but the OpenAI key is also required for evaluation comparison. Other environment variables are optional.
+
+### 2. Start the A2A server
+
+#### Using Docker (recommended)
 
 The Docker Compose file defines two services:
 
@@ -30,35 +35,32 @@ The Docker Compose file defines two services:
 | `agent-starsim` | `9101` | Claude Code agent with the Starsim plugin enabled |
 
 ```bash
-# Start both services
-ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build
+# Start both services -- main use case
+docker compose up --build
 
 # Start only the base agent
-ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build agent
+docker compose up --build agent
 
 # Start only the Starsim-enabled agent
-ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build agent-starsim
+docker compose up --build agent-starsim
+```
+
+Alternatively, if you did not create a `.env` file, you can supply the API key directly:
+
+```bash
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY docker compose up --build
 ```
 
 Agent cards are served at:
 - `http://localhost:9100/.well-known/agent.json` (base)
 - `http://localhost:9101/.well-known/agent.json` (starsim)
 
-You can also set configuration in a `.env` file next to `docker-compose.yml`:
-
-```env
-ANTHROPIC_API_KEY=sk-...
-CLAUDE_MODEL=claude-opus-4-6
-VERBOSE=true
-MAX_TURNS=10
-LOG_DIR=/home/agent/agent_logs
-```
-
 Docker environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ANTHROPIC_API_KEY` | (required) | Anthropic API key |
+| `OPENAI_API_KEY` | — | OpenAI API key; required for running OpenAI evaluation |
 | `CLAUDE_MODEL` | — | Claude model to use |
 | `HOST` | `0.0.0.0` | Bind address |
 | `PORT` | `9100` | Listen port (`agent` service) |
@@ -69,9 +71,38 @@ Docker environment variables:
 | `RUN_ID` | ISO-8601 timestamp | Label for this server run (subdirectory under `LOG_DIR`) |
 | `PLUGIN_DIRS` | — | Comma-separated plugin directory paths (set automatically for `agent-starsim`) |
 
-### 2. Run the evaluation
+#### Alternative: Running the A2A server locally
 
-The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. Set your API key via environment variable or a `.env` file (loaded automatically via python-dotenv). See [`eval/llm/README.md`](eval/llm/README.md) for the full list of options.
+**Not appropriate for evaluation**: The agent is able to access local files (including the problems and answers!). This
+option is used for development. If you want to run evaluations use the Dockerized A2A server.
+
+If you prefer to run the A2A server without Docker:
+
+```bash
+# Install dependencies
+uv sync
+
+# Start the server
+start-claude-code-server --port 9100 --workspace ./workspaces
+```
+
+Server CLI options:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--host` | `0.0.0.0` | Bind address |
+| `--port` | `9100` | Listen port |
+| `--workspace` | temp dir | Root directory for per-task workspaces |
+| `--model` | — | Claude model to use (also via `CLAUDE_MODEL` env var) |
+| `--max-turns` | — | Max agent loop iterations |
+| `--mcp` | — | MCP servers to enable (repeatable) |
+| `--verbose` | off | Print detailed execution progress to stdout |
+| `--log-dir` | — | Directory for structured JSONL execution logs (one file per task) |
+| `--run-id` | ISO-8601 timestamp | Label for this server run (subdirectory under `--log-dir`) |
+
+### 3. Run the evaluation
+
+The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. See [`eval/llm/README.md`](eval/llm/README.md) for the full list of options.
 
 #### Agent evaluation (iterative)
 
@@ -120,34 +151,32 @@ inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --te
 
 # Run without background context
 inspect eval eval/llm/starsim.py --model openai/gpt-4o --temperature 0 -T with_background=False
+
+# Run all models, takes about 10 min
+./eval/llm/run.sh
 ```
 
-### 3. Browse the evaluation dataset
+### 4. Analyze the results
+
+Evaluation is based on the `inspect` module, so must be run in the same environment; running interactively allows the plots to be viewed:
+
+```bash
+uv run python -i analysis/eval_performance.py
+```
+
+
+## Evaluation Dataset
+
+Our evaluation benchmark follows the structure of [SciCode](https://arxiv.org/abs/2407.13168), adapted for disease modeling with [Starsim](https://github.com/starsimhub/starsim). A central goal of this benchmark is to measure how well an agent can **leverage Starsim as a library** to solve modeling problems, rather than writing disease models from scratch. Agents that effectively use Starsim's built-in components (e.g., `ss.SIR`, `ss.Vaccine`, contact networks) demonstrate the kind of library fluency that matters in practice. Furthermore, we add a time limit on the agent evaluation to assess the time required to find a solution (or not!).
+
+To assess this, we depart from SciCode in one key way: in addition to test-case validation, we use an **LLM-judge assessment** to evaluate whether the agent's solution actually uses Starsim APIs. This catches cases where an agent produces numerically correct output but bypasses Starsim entirely (e.g., by implementing ODE solvers from scratch). The judge reviews the generated code and scores it on Starsim API usage, idiomatic patterns, and appropriate use of library abstractions.
+
+### Browse the evaluation dataset
 
 A Streamlit app (`app.py`) lets you browse the evaluation problems interactively.
 
 ```bash
 uv run streamlit run app.py
-```
-
-Features:
-- Select a main problem (Tutorial 1, 2, or 3) from the sidebar
-- Browse individual sub-steps with full descriptions, background context, function signatures, docstrings, and test cases
-- Toggle **Show gold solution** to reveal the reference implementation
-
-### Alternative: Running the A2A server locally
-
-**Not appropriate for evaluation**: The agent is able to access local files (including the problems and answers!). This
-option is used for development. If you want to run evaluations use the Dockerized A2A server.
-
-If you prefer to run the A2A server without Docker:
-
-```bash
-# Install dependencies
-uv sync
-
-# Start the server
-start-claude-code-server --port 9100 --workspace ./workspaces
 ```
 
 Server CLI options:
@@ -249,13 +278,6 @@ Problems span core Starsim use cases:
 - **Multi-disease** — Co-circulating pathogens, disease interactions
 - **Advanced networks** — Household structure, spatial mixing, dynamic contact patterns
 
-## Talk plan
-- Intro to the problem (getting up to speed on a complex library) and Starsim
-- How we developed the Starsim exam, and what worked well and didn't
-- Describe which skills/subagents we developed and why
-- Models and skillsets we tested
-- Evaluation of each combination
-- Open-source "gym" for users to plug in their own library, skills, and exam
 
 ## Architecture
 
