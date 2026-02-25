@@ -27,6 +27,10 @@ start-claude-code-server = "claude_a2a.claude_code_server:main"
 requires = ["uv_build>=0.9.10,<0.10.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-name = "claude_a2a"
+module-root = ""
+
 [tool.pytest.ini_options]
 markers = [
     "uses_llm: tests requiring an LLM backend",
