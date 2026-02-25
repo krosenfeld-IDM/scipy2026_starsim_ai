@@ -49,3 +49,7 @@ for file in files:
 
     # Store results
     r[key] = entry
+
+df = sc.dataframe.from_dict(r, orient='index')
+df.index.name = 'config'
+df.disp()
