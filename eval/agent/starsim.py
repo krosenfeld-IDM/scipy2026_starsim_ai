@@ -20,7 +20,7 @@ Options:
     -T with_background=True      Include background context in prompts (default: True)
     -T with_test_cases=True      Include test cases in prompts (default: True)
     -T timeout=60                Timeout in seconds for test execution (default: 60)
-    -T request_timeout=900       HTTP timeout for agent requests (default: 900)
+    -T request_timeout=1200      HTTP timeout for agent requests (default: 1200)
     -T max_retries=1             Max retries on HTTP timeout (default: 1)
     -T with_plugin=False         Use plugin server and tag trial name (default: False)
 """
@@ -166,7 +166,7 @@ def a2a_agent_solver(
     agent_url: str,
     with_background: bool = True,
     with_test_cases: bool = True,
-    request_timeout: int = 900,
+    request_timeout: int = 1200,
     max_retries: int = 1,
     with_plugin: bool = False,
 ):
@@ -326,7 +326,7 @@ def starsim_agent_benchmark(
     with_background: bool = True,
     with_test_cases: bool = True,
     timeout: int = 60,
-    request_timeout: int = 900,
+    request_timeout: int = 1200,
     max_retries: int = 1,
     with_plugin: bool = False,
 ) -> Task:
