@@ -106,7 +106,7 @@ The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.o
 
 #### Agent evaluation (iterative)
 
-Tests an agent's ability to iteratively write, test, and debug Starsim code. Problems are sent to the Claude Code A2A server, which can execute code, observe errors, and refine its solution. The agent receives test cases in the prompt so it can self-test.
+Tests an agent's ability to iteratively write, test, and debug Starsim code. Problems are sent to the Claude Code A2A server, which can execute code, observe errors, and refine its solution. The agent receives test cases in the prompt so it can self-test. It also has access to plugins, skills, etc.
 
 ```bash
 # Install dependencies (for running the eval client locally)
@@ -115,7 +115,7 @@ uv sync
 # Run the agent eval against the base agent (port 9100)
 inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
 
-# Run the agent eval against the Starsim-enabled agent (port 9101)
+# Run the agent eval against the Starsim-AI-enabled agent (port 9101)
 inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9101
 
 # Run a single tutorial
