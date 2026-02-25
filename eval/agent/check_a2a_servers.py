@@ -1,15 +1,19 @@
 #!/usr/bin/env python
-"""Confirm that the Starsim-AI plugin is available to one Docker server, and not to the other.
+"""Confirm that all four Docker A2A servers are responding correctly.
 
-Sends a plugin-inquiry prompt to two A2A servers and checks the responses.
+Checks that the Starsim-AI plugin is available to plugin servers and absent
+from non-plugin servers, for both Sonnet and Opus models.
+
+Queries all servers in parallel.
 
 Usage:
-    python eval/agent/check_plugin.py
-    python eval/agent/check_plugin.py --no-plugin-url http://localhost:9100 --plugin-url http://localhost:9101
+    python eval/agent/check_a2a_servers.py
+    python eval/agent/check_a2a_servers.py --timeout 180
 """
 
 import sys
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import httpx
 import sciris as sc
 
@@ -20,7 +24,17 @@ Start your answer with YES or NO.
 Explain your answer briefly.
 If YES, also give the plugin version number (which this plugin provides in the starsim-dev skill).
 Then list the skills and MCP servers available.
+Also report which LLM model you are using.
 """
+
+# (label, default_url, expects_plugin)
+SERVERS = [
+    ("sonnet",        "http://localhost:9100", False),
+    ("sonnet-plugin", "http://localhost:9101", True),
+    ("opus",          "http://localhost:9102", False),
+    ("opus-plugin",   "http://localhost:9103", True),
+]
+
 
 def query_server(url: str, timeout: int = 120) -> str:
     """Send the plugin question to an A2A server and return the response text."""
@@ -57,43 +71,61 @@ def query_server(url: str, timeout: int = 120) -> str:
     return ""
 
 
+def check_server(label: str, url: str, expects_plugin: bool, timeout: int) -> tuple[str, bool, str]:
+    """Query a server and check the response. Returns (label, passed, message)."""
+    try:
+        response = query_server(url, timeout=timeout)
+    except Exception as e:
+        return label, False, f"ERROR: {e}"
+
+    first_word = response.strip().split()[0].strip(".,!:").upper() if response.strip() else ""
+    if expects_plugin:
+        passed = first_word == "YES"
+        verdict = "PASS: server reports having the plugin" if passed else "FAIL: expected plugin but response doesn't start with YES"
+    else:
+        passed = first_word == "NO"
+        verdict = "PASS: server reports no plugin" if passed else "FAIL: expected no plugin but response doesn't start with NO"
+
+    detail = f"Response: {response}\n  {verdict}"
+    return label, passed, detail
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--no-plugin-url", default="http://localhost:9100")
-    parser.add_argument("--plugin-url", default="http://localhost:9101")
     parser.add_argument("--timeout", type=int, default=120)
+    for label, default_url, _ in SERVERS:
+        parser.add_argument(f"--{label}-url", default=default_url)
     args = parser.parse_args()
 
+    # Build server list with possibly overridden URLs
+    servers = []
+    for label, default_url, expects_plugin in SERVERS:
+        url = getattr(args, label.replace("-", "_") + "_url")
+        servers.append((label, url, expects_plugin))
+
+    # Query all servers in parallel
+    results = {}
+    with ThreadPoolExecutor(max_workers=len(servers)) as pool:
+        futures = {
+            pool.submit(check_server, label, url, expects_plugin, args.timeout): label
+            for label, url, expects_plugin in servers
+        }
+        for future in as_completed(futures):
+            label, passed, detail = future.result()
+            results[label] = (passed, detail)
+
+    # Print results in deterministic order
     ok = True
-
-    for label, url, expects_plugin in [
-        ("no-plugin", args.no_plugin_url, False),
-        ("plugin", args.plugin_url, True),
-    ]:
+    for label, url, _ in servers:
+        passed, detail = results[label]
         print(f"\n{'='*60}")
-        print(f"Querying {label} server at {url} ...")
-        try:
-            response = query_server(url, timeout=args.timeout)
-        except Exception as e:
-            print(f"  ERROR: {e}")
-            ok = False
-            continue
-
-        print(f"  Response: {response}")
-
-        first_word = response.strip().split()[0].strip(".,!:").upper() if response.strip() else ""
-        if expects_plugin:
-            if first_word == "YES":
-                sc.printgreen("  PASS: server reports having the plugin")
-            else:
-                sc.printred("  FAIL: expected plugin but response doesn't start with YES")
-                ok = False
+        print(f"{label} ({url})")
+        print(f"  {detail}")
+        if passed:
+            sc.printgreen(f"  >> {label}: PASS")
         else:
-            if first_word == "NO":
-                sc.printgreen("  PASS: server reports no plugin")
-            else:
-                sc.printred("  FAIL: expected no plugin but response doesn't start with NO")
-                ok = False
+            sc.printred(f"  >> {label}: FAIL")
+            ok = False
 
     print(f"\n{'='*60}")
     if ok:
