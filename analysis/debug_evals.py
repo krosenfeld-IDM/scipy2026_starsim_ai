@@ -18,10 +18,16 @@ for file in files:
 
     # Per-sample details
     for sample in log.samples:
-        print(sample.id)                    # sub_step_id
-        print(sample.scores)               # dict of scorer → Score
-        # score = sample.scores["starsim_scorer"]
-        # print(score.value)                 # 1.0 or 0.0
-        # print(score.explanation)           # error messages or "All tests passed"
-        # print(score.metadata)             # tests_passed, tests_total, sub_step_id, problem_id
-        # print(sample.messages)            # full message transcript
+        sc.printcyan(sample.id)                    # sub_step_id
+        # print(sample.scores)               # dict of scorer → Score
+        if 'starsim_scorer' in sample.scores:
+            score = sample.scores["starsim_scorer"]
+        elif 'agent_scorer' in sample.scores:
+            score = sample.scores["agent_scorer"]
+        else:
+            print('No starsim or agent scorer, but', sample.scores.keys())
+            continue
+        print(score.value)                 # 1.0 or 0.0
+        print(score.explanation)           # error messages or "All tests passed"
+        print(score.metadata)             # tests_passed, tests_total, sub_step_id, problem_id
+        print(sample.messages)            # full message transcript
