@@ -18,14 +18,15 @@ task_name = 'starsim_agent_benchmark'
 df_task = df_eval[df_eval['task_name'] == task_name]
 df_task = df_task.sort_values(by='model')
 
-fig = plt.figure(figsize=(6,6))
+sc.options(dpi=150)
+fig = plt.figure(figsize=(8,8))
 ax = plt.gca()
-ax.bar(np.arange(len(df_task)),df_task['score_headline_value'], color='xkcd:lightblue')
-ax.set_xticks(np.arange(len(df_task)))
-ax.set_xticklabels(df_task['model'], rotation=45)
-ax.set_ylim(0, 1)
-ax.set_xlabel('Model')
-ax.set_ylabel('Pass rate')
+ax.barh(np.arange(len(df_task)), df_task['score_headline_value'], color='xkcd:lightblue')
+ax.set_yticks(np.arange(len(df_task)))
+ax.set_yticklabels(df_task['model'] + df_task['task_arg_with_plugin'].apply(str))
+ax.set_xlim(0, 1)
+ax.set_ylabel('Model')
+ax.set_xlabel('Pass rate')
 ax.set_title('Starsim LLM Benchmark')
 
 sc.figlayout()
