@@ -102,7 +102,7 @@ Server CLI options:
 
 ### 3. Run the evaluation
 
-The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. See [`eval/llm/README.md`](eval/llm/README.md) for the full list of options.
+The evaluation benchmark uses [inspect-ai](https://inspect.ai-safety-institute.org.uk/) to measure performance on the Starsim problem set. See [`eval/prompt/README.md`](eval/prompt/README.md) for the full list of options.
 
 #### Agent evaluation (iterative)
 
@@ -138,22 +138,22 @@ Agent evaluation parameters:
 | `request_timeout` | `600` | HTTP timeout in seconds for agent requests |
 | `max_retries` | `1` | Max retries on HTTP timeout |
 
-#### LLM evaluation (one-shot)
+#### Prompt evaluation (one-shot)
 
 Tests a model's ability to generate correct Starsim code in a single attempt (no A2A server needed):
 
 ```bash
 # Run the full benchmark
-inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0
+inspect eval eval/prompt/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0
 
 # Run a single tutorial
-inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0 -T tutorial=starsim_t1
+inspect eval eval/prompt/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0 -T tutorial=starsim_t1
 
 # Run without background context
-inspect eval eval/llm/starsim.py --model openai/gpt-4o --temperature 0 -T with_background=False
+inspect eval eval/prompt/starsim.py --model openai/gpt-4o --temperature 0 -T with_background=False
 
 # Run all models, takes about 10 min
-./eval/llm/run.sh
+./eval/prompt/run.sh
 ```
 
 ### 4. Analyze the results

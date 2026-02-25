@@ -15,12 +15,12 @@ uv sync
 
 ## Evaluation Modes
 
-### LLM Evaluation (one-shot)
+### Prompt Evaluation (one-shot)
 
 Tests a model's ability to generate Starsim code in a single attempt. The model receives a problem description and function signature, and must return a complete implementation.
 
 ```bash
-inspect eval eval/llm/starsim.py --model <your_model> --temperature 0
+inspect eval eval/prompt/starsim.py --model <your_model> --temperature 0
 ```
 
 #### Options
@@ -38,7 +38,7 @@ inspect eval eval/llm/starsim.py --model <your_model> --temperature 0
 Run a single tutorial:
 
 ```bash
-inspect eval eval/llm/starsim.py \
+inspect eval eval/prompt/starsim.py \
     --model openai/gpt-4o \
     --temperature 0 \
     -T tutorial=starsim_t1
@@ -47,7 +47,7 @@ inspect eval eval/llm/starsim.py \
 Run without background context:
 
 ```bash
-inspect eval eval/llm/starsim.py \
+inspect eval eval/prompt/starsim.py \
     --model anthropic/claude-sonnet-4-20250514 \
     --temperature 0 \
     -T with_background=False

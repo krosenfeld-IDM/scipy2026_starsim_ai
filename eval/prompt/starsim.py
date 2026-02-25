@@ -4,7 +4,7 @@ Evaluates LLM ability to write Starsim simulation code by presenting
 function specifications and scoring generated code against test cases.
 
 Usage:
-    inspect eval eval/llm/starsim.py --model <your_model> --temperature 0
+    inspect eval eval/prompt/starsim.py --model <your_model> --temperature 0
 
 Options:
     -T problems_dir=<path>       Path to problems JSONL directory (default: ./problems)
