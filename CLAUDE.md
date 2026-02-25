@@ -22,8 +22,8 @@ python3 problems/build_jsonl.py
 # Start the A2A server
 start-claude-code-server --port 9100 --workspace ./workspaces
 
-# Run LLM evaluation
-inspect eval eval/llm/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0
+# Run prompt evaluation
+inspect eval eval/prompt/starsim.py --model anthropic/claude-sonnet-4-20250514 --temperature 0
 
 # Run agent evaluation
 inspect eval eval/agent/starsim.py -T agent_url=http://localhost:9100
@@ -39,7 +39,7 @@ uv run streamlit run app.py
   - `claude_code_executor.py` — Bridges A2A protocol to Claude Agent SDK
   - `mcp_secret.py` — Example MCP server
 - `eval/` — Evaluation harness
-  - `llm/starsim.py` — One-shot LLM evaluation (inspect-ai)
+  - `prompt/starsim.py` — One-shot prompt evaluation (inspect-ai)
   - `agent/starsim.py` — Iterative agent evaluation via A2A server
   - `shared.py` — Shared evaluation utilities
 - `problems/` — Problem definitions
