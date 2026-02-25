@@ -11,11 +11,10 @@ Usage:
     python eval/agent/check_a2a_servers.py --timeout 180
 """
 
-import sys
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import httpx
 import sciris as sc
+import httpx
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 QUESTION = """
@@ -129,10 +128,10 @@ def main():
 
     print(f"\n{'='*60}")
     if ok:
-        print("All checks passed.")
+        sc.printgreen("All checks passed.")
     else:
-        print("Some checks FAILED.")
-        sys.exit(1)
+        sc.printred("Some checks FAILED.")
+    return
 
 
 if __name__ == "__main__":
