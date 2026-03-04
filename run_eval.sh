@@ -9,4 +9,4 @@ export REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 echo ""
 echo -e "\033[1;35m=== Agent evaluations ===\033[0m"
-"$REPO_ROOT/eval/agent/run.sh"
+"$REPO_ROOT/eval/run_parallel.sh"
