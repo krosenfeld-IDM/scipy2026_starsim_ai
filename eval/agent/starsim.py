@@ -28,6 +28,7 @@ Options:
 from dotenv import load_dotenv
 load_dotenv()
 
+import json
 import logging
 import sys
 import textwrap
@@ -140,29 +141,47 @@ def _make_a2a_request(text: str) -> dict:
     }
 
 
-def _extract_a2a_response(data: dict) -> str:
-    """Extract text content from an A2A JSON-RPC response."""
+def _extract_a2a_response(data: dict) -> tuple[str, dict]:
+    """Extract text content and usage from an A2A JSON-RPC response.
+
+    Returns:
+        Tuple of (response_text, usage_dict).
+    """
     if "error" in data:
         error = data["error"]
         raise RuntimeError(f"A2A server error: {error}")
 
     result = data.get("result", {})
+    response_text = ""
+    usage = {}
 
-    # Check for artifacts (where the final response lives)
+    # Check artifacts
     artifacts = result.get("artifacts", [])
     for artifact in artifacts:
-        for part in artifact.get("parts", []):
-            if part.get("kind") == "text":
-                return part["text"]
+        name = artifact.get("name", "")
+        if name == "usage":
+            # Extract usage data from the usage artifact
+            for part in artifact.get("parts", []):
+                if part.get("kind") == "text":
+                    try:
+                        usage = json.loads(part["text"])
+                    except (json.JSONDecodeError, KeyError):
+                        pass
+        elif not response_text:
+            # First non-usage artifact is the response
+            for part in artifact.get("parts", []):
+                if part.get("kind") == "text":
+                    response_text = part["text"]
 
     # Fallback: check status message
-    status = result.get("status", {})
-    message = status.get("message", {})
-    for part in message.get("parts", []):
-        if part.get("kind") == "text":
-            return part["text"]
+    if not response_text:
+        status = result.get("status", {})
+        message = status.get("message", {})
+        for part in message.get("parts", []):
+            if part.get("kind") == "text":
+                response_text = part["text"]
 
-    return ""
+    return response_text, usage
 
 
 @solver
@@ -208,6 +227,7 @@ def a2a_agent_solver(
 
         payload = _make_a2a_request(prompt)
         response_text = ""
+        usage = {}
         incomplete_reason = ""
 
         for attempt in range(1, max_retries + 1):
@@ -216,7 +236,7 @@ def a2a_agent_solver(
                     resp = await client.post(agent_url, json=payload)
                     resp.raise_for_status()
                     data = resp.json()
-                response_text = _extract_a2a_response(data)
+                response_text, usage = _extract_a2a_response(data)
                 break
             except httpx.TimeoutException as exc:
                 if attempt < max_retries:
@@ -259,6 +279,7 @@ def a2a_agent_solver(
 
         if incomplete_reason:
             response_text = incomplete_reason
+            usage = {}
 
         logger.info(
             "Received response for %s (length=%d%s)",
@@ -273,6 +294,7 @@ def a2a_agent_solver(
             content=response_text,
         )
         state.metadata["incomplete"] = incomplete_reason
+        state.metadata["usage"] = usage
         state.messages.append(ChatMessageAssistant(content=response_text))
 
         return state
