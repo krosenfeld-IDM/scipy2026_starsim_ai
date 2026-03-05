@@ -33,7 +33,7 @@ For our domain-specific problem, providing custom skills and MCP servers reduced
 
 # **Notes to organizer**
 
-I gave a [talk at SciPy 2022](https://www.youtube.com/watch?v=eZJ0FaPw2Gs) in Austin on [Covasim](https://conference.scipy.org/proceedings/scipy2022/pdfs/cliff_kerr.pdf), a COVID-19 model. I also gave a [talk at SciPy 2024](https://www.youtube.com/watch?v=3uMTnn8xC8w) on [Starsim](https://starsim.org/), and a lightning talk on [Sciris](https://docs.sciris.org/en/latest/).
+I gave a [talk at SciPy 2022](https://www.youtube.com/watch?v=eZJ0FaPw2Gs) in Austin on [Covasim](https://conference.scipy.org/proceedings/scipy2022/pdfs/cliff_kerr.pdf), a COVID-19 model. I also gave a [talk at SciPy 2024](https://www.youtube.com/watch?v=3uMTnn8xC8w) on [Starsim](https://starsim.org/), and a lightning talk on [Sciris](https://sciris.org).
 
 **Track:**   
 AI
