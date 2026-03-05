@@ -42,8 +42,20 @@ for file in files:
     stop = datetime.fromisoformat(log.stats.completed_at)
     entry.time = (stop - start).total_seconds()
 
-    # Get tokens
-    entry.tokens = sum(u.total_tokens for u in log.stats.model_usage.values())
+    # Get tokens: inspect_ai tracks them for prompt mode; agent mode
+    # stores per-sample usage from the Claude Agent SDK
+    if log.stats.model_usage:
+        entry.tokens = sum(
+            u.total_tokens for u in log.stats.model_usage.values()
+        )
+    else:
+        input_tokens = 0
+        output_tokens = 0
+        for sample in (log.samples or []):
+            usage = (sample.metadata or {}).get('usage', {})
+            input_tokens += usage.get('input_tokens', 0)
+            output_tokens += usage.get('output_tokens', 0)
+        entry.tokens = input_tokens + output_tokens
 
     # Get overall result
     entry.score = log.results.scores[0].metrics['mean'].value

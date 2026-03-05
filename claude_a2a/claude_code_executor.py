@@ -382,6 +382,8 @@ class ClaudeCodeExecutor(AgentExecutor):
         opts = self._build_options(task_id, workspace)
         collected_text: list[str] = []
         session_id: str | None = None
+        usage: dict[str, Any] = {}
+        total_cost_usd: float | None = None
 
         try:
             async for msg in query(prompt=user_text, options=opts):
@@ -459,10 +461,14 @@ class ClaudeCodeExecutor(AgentExecutor):
                 elif isinstance(msg, ResultMessage):
                     # Capture the session ID for multi-turn
                     session_id = getattr(msg, "session_id", None)
+                    usage = getattr(msg, "usage", None) or {}
+                    total_cost_usd = getattr(msg, "total_cost_usd", None)
                     _log_to_console("RESULT", f"session_id={session_id}", task_id)
                     if elog and task_id:
                         elog.log(task_id, "result",
-                                 session_id=session_id)
+                                 session_id=session_id,
+                                 usage=usage,
+                                 total_cost_usd=total_cost_usd)
 
                 else:
                     _log_to_console("MSG", f"{type(msg).__name__}", task_id)
@@ -515,6 +521,27 @@ class ClaudeCodeExecutor(AgentExecutor):
                 append=False,
             )
         )
+
+        # Emit usage as a separate artifact
+        if usage:
+            usage_data = dict(usage)
+            if total_cost_usd is not None:
+                usage_data["total_cost_usd"] = total_cost_usd
+            await event_queue.enqueue_event(
+                TaskArtifactUpdateEvent(
+                    taskId=task_id or "",
+                    contextId=context_id,
+                    artifact=Artifact(
+                        artifactId=str(uuid4()),
+                        parts=[Part(root=TextPart(
+                            text=json.dumps(usage_data),
+                        ))],
+                        name="usage",
+                        lastChunk=True,
+                    ),
+                    append=False,
+                )
+            )
 
         # Mark task as completed
         await event_queue.enqueue_event(
